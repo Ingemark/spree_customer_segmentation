@@ -1,5 +1,13 @@
 module Spree
   module CustomerSegmentation
+    def self.check_db_type
+      (ActiveRecord::Base.connection.adapter_name.downcase.starts_with? 'mysql') ? 'mysql' : 'pg'
+    rescue Exception
+      puts '[WARNING] DB not set'
+
+      nil
+    end
+
     NEW_PRODUCT_DATE_LIMIT = 7
     RECENT_ORDER_DATE_LIMIT = 7
 
@@ -18,7 +26,9 @@ module Spree
     MULTIPLE_OPERATORS_WITH_INCLUDES_ALL = { includes: 'includes(OR)', not_includes: 'does not include', includes_all: 'includes all(AND)', blank: 'blank' }
 
     # Map services with operators available, and type of metric
-    if (ActiveRecord::Base.connection.adapter_name.downcase.starts_with? 'mysql')
+
+    db_type = self.check_db_type
+    if db_type == 'mysql'
       FILTERS_MAPPER = {
         user_email:                  { metric_type: 'alphanumeric', operators: WORD_OPERATORS, service: Mysql::User::EmailFilterService },
         user_firstname:              { metric_type: 'alphanumeric', operators: WORD_OPERATORS_WITH_STARTS_WITH, service: Mysql::User::FirstNameFilterService },
@@ -61,7 +71,7 @@ module Spree
         new_products_added_to_cart:      { metric_type: 'alphanumeric', operators: MULTIPLE_OPERATORS_WITH_INCLUDES_ALL, service: Mysql::Product::NewProductsAddedToCartFilterService },
         new_products_ordered:            { metric_type: 'alphanumeric', operators: MULTIPLE_OPERATORS_WITH_INCLUDES_ALL, service: Mysql::Product::NewProductsOrderedFilterService }
       }
-    else
+    elsif db_type == 'pg'
       FILTERS_MAPPER = {
         user_email:                  { metric_type: 'alphanumeric', operators: WORD_OPERATORS, service: Postgres::User::EmailFilterService },
         user_firstname:              { metric_type: 'alphanumeric', operators: WORD_OPERATORS_WITH_STARTS_WITH, service: Postgres::User::FirstNameFilterService },
@@ -105,7 +115,6 @@ module Spree
         new_products_ordered:            { metric_type: 'alphanumeric', operators: MULTIPLE_OPERATORS_WITH_INCLUDES_ALL, service: Postgres::Product::NewProductsOrderedFilterService }
       }
     end
-
 
     # Maps filters with their services
     AVAILABLE_FILTERS =     {
@@ -163,6 +172,5 @@ module Spree
         ['New Products Ordered', :new_products_ordered]
       ]
     }
-
   end
 end
